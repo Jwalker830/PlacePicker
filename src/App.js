@@ -9,7 +9,7 @@ function App() {
     <>
       <Router>
         <Routes>
-          <Route path="/" element={<PickerMain/>}></Route>
+          <Route path="/PlacePicker" element={<PickerMain/>}></Route>
         </Routes>
       </Router>
     </>
