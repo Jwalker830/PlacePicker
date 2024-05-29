@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { GoogleMap, LoadScript } from '@react-google-maps/api';
+import { updateDoc, arrayUnion, collection, doc, setDoc, query, where, getDocs, arrayRemove } from "firebase/firestore";
+import { db, auth, provider} from "./firebase-config";
+import PlaceComponent from './PlaceComponent';
 
-const PickerMain = () => {
+const PickerMain = ({ isAuth }) => {
     const [prompt, setPrompt] = useState("");
     const [map, setMap] = useState(null);
     const [userLocation, setUserLocation] = useState(null);
@@ -9,6 +12,29 @@ const PickerMain = () => {
     const [markers, setMarkers] = useState([]);
     const [onMobile, setOnMobile] = useState(() => {return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream});
     
+    const setFav = async (fav) => {
+        const q = query(collection(db, "users"), where("id", "==", auth.currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach((doc) => {
+            updateDoc(doc.ref, {
+                places: arrayUnion(fav)
+            });
+        });
+    }
+
+    const isFav = async (p) => {
+        const q = query(collection(db, "users"), where("id", "==", auth.currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        let isFavorite = false;
+        querySnapshot.forEach((doc) => {
+            if (doc.data().places.includes(p)) {
+                isFavorite = true;
+            }
+        });
+        return isFavorite;
+    }
+    
+
     const clearMarkers = () => {
         markers.forEach(marker => marker.setMap(null));
         setMarkers([]);
@@ -123,12 +149,15 @@ const PickerMain = () => {
                         distance = "Distance not available";
                     }
 
+                    var curlat = place.geometry.location.lat();
+                    var curlng = place.geometry.location.lng();
+
                     const cur = {
                         name: place.name,
                         address: place.formatted_address,
                         price: place.price_level,
                         distance: distance,
-                        location: place.geometry.location,
+                        location: {lat: curlat, lng: curlng}
                     };
 
                     const marker = new window.google.maps.Marker({
@@ -177,8 +206,9 @@ const PickerMain = () => {
                 <div className='resultsContainer'>
                     {placeList.map((place, index) => (
                         <div className='placeDiv' onClick={() => {showMarker(place)}} key={index} style={{fontSize: (onMobile ? "15px" : "20px" ), padding: (onMobile ? "2px" : "5px" )}}>
-                                <div className='placeTitle'>{place.name} at {place.address}</div>
-                                <div className='infoDisplay'><div>Price level: {place.price}</div><div>{place.distance} by Driving</div></div>
+                            <PlaceComponent isAuth={ isAuth } p={ place }/>
+                            {/*<div className='placeTitle'>{place.name} at {place.address}<div className='favStar' onClick={() => {setFav(place)}}>{isFav(place) ? "☆" : "★"}</div></div>*/}
+                            <div className='infoDisplay'><div>Price level: {place.price}</div><div>{place.distance} by Driving</div></div>
                         </div>
                     ))}
                 </div>
